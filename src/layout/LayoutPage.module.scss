@@ -1,0 +1,72 @@
+@import '@/styles/variables.module.scss';
+
+.app-wrapper {
+  display: flex;
+  height: 100vh;
+}
+
+.app-wrapper .sidebar-container {
+  width: $base-left-menu-width;
+  height: 100vh;
+  background: $base-color-green;
+}
+.app-wrapper .main-container {
+  flex: 1;
+}
+.app-wrapper .fixed-header {
+  flex: 1;
+  height: 80px;
+  border-bottom: 1px solid #eee;
+}
+.hideSidebar .sidebar-container {
+  width: $hideSideBarWidth;
+}
+
+
+
+// sidebar
+.logo-container {
+  display: flex;
+  padding-top: 8px;
+  align-items: center;
+  justify-content: space-around;
+  padding-left: 10px;
+  .logo-avatar{
+    display: inline;
+  }
+  .logo-title {
+    color: aliceblue;
+    font-size: 24px;
+    font-weight: 600;
+    word-wrap: break-word;
+    word-break: normal;
+    flex: 1;
+    padding-left: 10px;
+  }
+  
+}
+
+.menus svg{
+  fill: aliceblue;
+}
+// 修改antd menu 的样式
+:global(.sider.ant-layout-sider-collapsed span.ant-menu-title-content) {
+  opacity: 0;
+} 
+:global(.ant-menu-submenu-popup svg) {
+  fill: aliceblue;
+} 
+:global(.sider.ant-layout-sider-collapsed .ant-menu-sub) {
+ display: none;
+}
+
+:global(.ant-motion-collapse){
+  display: none;
+}
+// 修改bug 首次点击展开时，全部展开
+:global(.ant-menu-submenu-inline .ant-motion-collapse){
+  display: none;
+}
+:global(.ant-menu-submenu-open .ant-motion-collapse){
+  display: block;
+}

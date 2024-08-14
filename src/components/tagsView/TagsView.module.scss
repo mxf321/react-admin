@@ -1,0 +1,29 @@
+.tags-view-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 3px 0 3px 3px;
+  background: #fff;
+  padding: 6px;
+ 
+}
+.tags-view-item {
+  display: flex;
+  align-items: center;
+  width: auto;
+  padding: 0 5px;
+  justify-content: center;
+  height: 30px;
+  border: 1px solid #eee;
+  margin-right: 3px;
+}
+.tags-view-item.active {
+  color: #eee;
+}
+.tags-view-item.active::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #eee;
+  margin-right: 3px;
+}

@@ -1,0 +1,16 @@
+.header-search {
+  display: flex;
+  align-items: center;
+  font-size: 1em !important;
+  .search-icon {
+    font-size: 18px;
+    vertical-align: middle;
+    cursor: pointer;
+  }
+  .hide {
+    display: none;
+  }
+  .show {
+    display: block;
+  }
+}
