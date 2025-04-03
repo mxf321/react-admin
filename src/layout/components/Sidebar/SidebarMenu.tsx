@@ -145,7 +145,7 @@ export const SidebarMenu: React.FC = () => {
         { path: pathname, title: mapData.title }
       ]
     } else {
-      breadcrumbItems = [{ path: pathname, title: mapData!.title }]
+      breadcrumbItems = [{ path: pathname, title: mapData?.title }]
     }
     dispatch(setBreadcrumbItemsCreator(breadcrumbItems))
     // menus 回显点击键actives SelectedKeys

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import NotFoundPage from '../error-page/NotFoundPage'
+import { Loading } from '@/components'
 
 const ArticleDetailPage: React.FC = () => {
   // 获取数据的方法
@@ -15,21 +16,44 @@ const ArticleDetailPage: React.FC = () => {
   const { t } = useTranslation()
   const [articleDetail, setArticleDetail] = useState<any>({})
   const language = useSelector((state) => state.base.language)
-  const getArticleDetail = async () => {
-    const res = (await getArticleDetailApi(articleId!)).data
-    setArticleDetail(res)
-  }
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // 获取文章详情
+  const fetchArticleDetail = async () => {
+    try {
+      if (!articleId) {
+        throw new Error('Article ID is undefined');
+      }
+
+      const { data } = await getArticleDetailApi(articleId);
+      setArticleDetail(data);
+    } catch (error) {
+      console.error('Failed to fetch article detail:', error);
+      setArticleDetail(null); // 设置为 null 表示加载失败
+    } finally {
+      setLoading(false); // 无论成功或失败，都结束加载状态
+    }
+  };
 
   useEffect(() => {
     if (articleId) {
-      getArticleDetail()
+      fetchArticleDetail()
     }
   }, [articleId])
 
   const onEditClick = () => {
-    navigate(`/article/editor/${articleId}`)
+    if (articleId) {
+      navigate(`/article/editor/${articleId}`);
+    }
+  };
+  // 如果正在加载，显示加载提示
+  if (loading) {
+    return <Loading />;
   }
-
+  // 如果文章详情为空，显示 404 页面
+  if (!articleDetail) {
+    return <NotFoundPage />;
+  }
   return (
     <>
       {articleDetail ? (

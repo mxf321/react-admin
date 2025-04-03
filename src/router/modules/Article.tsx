@@ -6,7 +6,6 @@ const LayoutPage = lazy(() => import("@/layout/LayoutPage"))
 const ArticleRankingPage = lazy(() => import("@/views/article-ranking/ArticleRankingPage"))
 const ArticleDetailPage = lazy(() => import("@/views/article-detail/ArticleDetailPage"))
 
-
 const article: IRouteConfigsTable = {
   path: '/article',
   name: 'articleRanking',

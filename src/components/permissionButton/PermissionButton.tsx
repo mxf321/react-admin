@@ -2,22 +2,36 @@
  * 控制权限的按键
  */
 
+import { RootState } from '@/redux';
 import { useSelector } from '@/redux/hooks'
+import { useMemo } from 'react';
 
-type PropsType = {
-    permission: string
-    children?: any
-}
-export const PermissionButton: React.FC<PropsType> = ({
-    permission,
-    children
+type PermissionButtonProps = {
+    /** 需要验证的权限标识 */
+    requiredPermission: string;
+    /** 权限验证通过时渲染的子内容 */
+    children: React.ReactNode;
+    /** 权限不匹配时的降级内容 */
+    fallback?: React.ReactNode | null;
+};
+
+// 自定义权限校验钩子
+const usePermission = (requiredPermission: string) => {
+    const userPermissions = useSelector((state: RootState) =>
+        state.user.userInfo?.permissions?.points ?? []
+    );
+
+    return useMemo(
+        () => userPermissions.includes(requiredPermission),
+        [userPermissions, requiredPermission]
+    );
+};
+
+export const PermissionButton: React.FC<PermissionButtonProps> = ({
+    requiredPermission,
+    children,
+    fallback = null
 }) => {
-    const userInfo = useSelector((state) => state.user.userInfo)
-    const permissions = userInfo && userInfo['permissions']['points']
-    return userInfo &&
-        permissions &&
-        permissions.length > 0 &&
-        permissions.includes(permission)
-        ? children
-        : null
+    const hasPermission = usePermission(requiredPermission);
+    return hasPermission ? <>{children}</> : <>{fallback}</>;
 }

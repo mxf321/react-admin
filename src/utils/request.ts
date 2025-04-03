@@ -38,13 +38,13 @@ service.interceptors.request.use(
     //   //  替换url的请求前缀baseUrl
     //   config.baseURL = import.meta.env.VITE_APP_BASE_API_DEV
     // }
-    // const token = rootStore.store.getState().user.token || getItem(TOKEN)
+    const token = rootStore.store.getState().user.token || getItem(TOKEN)
     // const  language  =  rootStore.store.getState().base.language;
 
-    // if (token) {
-    //   // 在headers后加一个! 表示是一定存在的
-    //   // config.headers!['Authorization'] = `Bearer ${token.value}`
-    // }
+    if (token) {
+      // 在headers后加一个! 表示是一定存在的
+      config.headers!['Authorization'] = `Bearer ${token.value}`
+    }
     // // 配置接口国际化
     // config.headers!["Accept-Language"] = language.value;
 

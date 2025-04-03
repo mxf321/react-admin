@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { PanThumb } from '@/components'
 import { SvgIcon } from '@/components'
 import { RootState } from '@/redux'
-import { GetUserInfoResult } from '@/types/api'
+import { GetFeatureItemResult, GetUserInfoResult } from '@/types/api'
 
 interface PropsType {
-  features: any[]
+  features: GetFeatureItemResult[]
 }
 
 export const ProjectCard: React.FC<PropsType> = ({ features }) => {

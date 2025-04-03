@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { ChangeEvent, useCallback, useRef, useState, DragEvent } from 'react'
 import { InboxOutlined, UploadOutlined } from '@ant-design/icons'
 import { Button, message } from 'antd'
 import { useTranslation } from 'react-i18next'
@@ -7,8 +7,14 @@ import XLSX from 'xlsx'
 import { getHeaderRow, isExcel } from './utils'
 
 interface PropsType {
-    onSuccess: (excelData) => void
-    beforeUpload?: (rawFile: File) => boolean
+    /** 上传成功回调 */
+    onSuccess: (excelData: ExcelData) => void;
+    /** 上传前校验函数 */
+    beforeUpload?: (rawFile: File) => boolean;
+}
+interface ExcelData {
+    header: string[];
+    results: Array<Record<string, any>>;
 }
 
 export const UploadExcel: React.FC<PropsType> = ({
@@ -17,86 +23,90 @@ export const UploadExcel: React.FC<PropsType> = ({
 }) => {
     const { t } = useTranslation()
     const [loading, setLoading] = useState<boolean>(false)
+    const excelUploadInput = useRef<HTMLInputElement>(null);
 
-    const excelUploadInput = useRef<any>()
-    const handleUpload = () => {
-        excelUploadInput.current?.click()
-    }
-    const handleChange = (e) => {
-        const files = e.target.files
-        const rawFile = files[0]
-        if (!rawFile) return
-        upload(rawFile)
-    }
+    // 通用文件处理逻辑
+    const processFile = useCallback(async (rawFile: File) => {
+        try {
+            setLoading(true);
+            const data = await readExcelFile(rawFile);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const workSheet = workbook.Sheets[firstSheetName];
 
-    // 拖拽上传
-    const handleDrop = (e) => {
-        if (loading) return
-        const files = e.dataTransfer.files
-        if (files.length !== 1) {
-            message.error('必须要有一个文件')
-            return
-        }
-        const rawFile = files[0]
-        if (!isExcel(rawFile)) {
-            message.error('必须是 .xlsx,.xls,.csx 文件')
-            return
-        }
-        upload(rawFile)
-    }
-    const handleDragover = (e) => {
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'copy'
-    }
+            const excelData = {
+                header: getHeaderRow(workSheet),
+                results: XLSX.utils.sheet_to_json(workSheet)
+            };
 
-    // 触发上传事件
-    const upload = (rawFile: File) => {
-        excelUploadInput.current.value = null
-        // 如果没有指定上传前回调的话
-        if (!beforeUpload) {
-            renderData(rawFile)
-            return
+            onSuccess?.(excelData);
+        } catch (error) {
+            message.error(t('uploadExcel.parseError'));
+        } finally {
+            setLoading(false);
         }
-        // 如果用户指定了上传前的回调，那么只有返回true时，才会执行对应的后续操作
-        const before = beforeUpload(rawFile)
-        if (before) {
-            renderData(rawFile)
-        }
-    }
-    // 读取数据（异步）
-    const renderData = (rawFile) => {
-        setLoading(true)
+    }, [onSuccess, t]);
+    // 文件读取逻辑
+    const readExcelFile = useCallback((file: File): Promise<ArrayBuffer> => {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            // 读取操作完成时触发
-            reader.onload = (e) => {
-                // 1. 获取到解析后的数据
-                const data = e.target?.result
-                // 2. 利用xlsx对数据进行解析
-                const workbook = XLSX.read(data, { type: 'array' })
-                // 3. 获取第一张表格名称
-                const firstSheetName = workbook.SheetNames[0]
-                // 4. 读取 sheet1 的数据
-                const workSheet = workbook.Sheets[firstSheetName]
-                // 5. 解析数据表头
-                const header = getHeaderRow(workSheet)
-                // 6. 解析数据库
-                const results = XLSX.utils.sheet_to_json(workSheet)
-                // 7. 传入解析之后的数据
-                generateData({ header, results })
-                // 8. 处理loading
-                setLoading(false)
-                // 9. 成功回调
-                resolve(results)
-            }
-            reader.readAsArrayBuffer(rawFile)
-        })
-    }
+            const reader = new FileReader();
 
-    // 根据导入内容，生成数据
-    const generateData = (excelData) => {
-        onSuccess && onSuccess(excelData)
-    }
+            reader.onload = (e) => {
+                const result = e.target?.result;
+                result instanceof ArrayBuffer
+                    ? resolve(result)
+                    : reject(new Error('Invalid file format'));
+            };
+
+            reader.onerror = () => reject(reader.error);
+            reader.readAsArrayBuffer(file);
+        });
+    }, []);
+
+    // 触发文件处理
+    const handleFile = useCallback((file: File) => {
+        if (!beforeUpload || beforeUpload(file)) {
+            excelUploadInput.current!.value = '';
+            processFile(file);
+        }
+    }, [beforeUpload, processFile]);
+
+    // 点击上传处理
+    const handleUploadClick = useCallback(() => {
+        excelUploadInput.current?.click();
+    }, []);
+
+    // 输入框变化处理
+    const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handleFile(file);
+    }, [handleFile]);
+    // 拖拽处理
+    const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        if (loading) return;
+
+        const files = e.dataTransfer.files;
+        if (files.length !== 1) {
+            message.error(t('uploadExcel.singleFile'));
+            return;
+        }
+
+        const file = files[0];
+        if (!isExcel(file)) {
+            message.error(t('uploadExcel.fileType'));
+            return;
+        }
+
+        handleFile(file);
+    }, [loading, handleFile, t]);
+    const handleDragover = useCallback((e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    }, []);
+
+
+
     return (
         <div className={styles['upload-excel']}>
             <div className={styles['btn-upload']}>
@@ -104,7 +114,7 @@ export const UploadExcel: React.FC<PropsType> = ({
                     type="primary"
                     loading={loading}
                     icon={<UploadOutlined />}
-                    onClick={handleUpload}
+                    onClick={handleUploadClick}
                 >
                     {t('uploadExcel.upload')}
                 </Button>
@@ -114,7 +124,7 @@ export const UploadExcel: React.FC<PropsType> = ({
                 ref={excelUploadInput}
                 className={styles['excel-upload-input']}
                 accept=".xlsx,.xls"
-                onChange={handleChange}
+                onChange={handleInputChange}
             />
             <div
                 className={styles['drop']}

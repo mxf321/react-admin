@@ -33,7 +33,7 @@ export interface IRemoveTagsViewAction {
 
 export interface ISetBreadcrumbItemsAction {
   type: typeof SET_BREADCRUMBITEMS
-  payload: any
+  payload: BreadcrumbItemsType[]
 }
 
 export type BaseActionTypes =

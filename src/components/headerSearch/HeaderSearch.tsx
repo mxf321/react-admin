@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import styles from './HeaderSearch.module.scss'
 import { SearchOutlined } from '@ant-design/icons'
 import { Select } from 'antd'
@@ -9,99 +9,95 @@ import { useSelector } from '@/redux/hooks'
 import { generateRoutes } from './FuseData'
 import type { SearchPollType, NewFuseType } from '@/types/app'
 import { RootState } from '@/redux/index'
-
+const FUSE_OPTIONS: Fuse.IFuseOptions<SearchPollType> = {
+    shouldSort: true,
+    minMatchCharLength: 1,
+    keys: [
+        { name: 'title', weight: 0.7 },
+        { name: 'path', weight: 0.3 }
+    ]
+};
 export const HeaderSearch: React.FC = () => {
     const navigate = useNavigate()
-    const [value, setValue] = useState<string>()
     const routes = useSelector((state: RootState) => state.permission.routes)
+    const [searchValue, setSearchValue] = useState<string>();
+    const [isVisible, setIsVisible] = useState(false);
+    // 生成搜索数据源
+    const searchPool = useMemo<SearchPollType[]>(
+        () => generateRoutes(routes),
+        [routes]
+    );
 
-    // 数据源
-    const searchPoll: SearchPollType[] = generateRoutes(routes)
     // 搜索库相关
-    let fuse
-    const initFuse = (searchPoll) => {
-        fuse = new Fuse(searchPoll, {
-            shouldSort: true,
-            minMatchCharLength: 1,
-            keys: [
-                {
-                    name: 'title',
-                    weight: 0.7
-                },
-                {
-                    name: 'path',
-                    weight: 0.3
-                }
-            ]
-        })
-    }
-    initFuse(searchPoll)
-    // 控制 search 展示
-    const [isShow, setIsShow] = useState<boolean>(false)
-    const onShowClick = () => {
-        setIsShow(!isShow)
-    }
+    // 初始化 Fuse 实例
+    const fuseInstance = useMemo(
+        () => new Fuse(searchPool, FUSE_OPTIONS),
+        [searchPool]
+    );
 
-    // 去重
-    const filterFuse = (fuse) => {
-        const stringFuse = fuse.map((i) => JSON.stringify(i.item))
-        const newFuse = Array.from(new Set(stringFuse))
-        return newFuse.map((j) => JSON.parse(j))
-    }
+    // 处理搜索选项生成
+    const generateSearchOptions = useCallback((results: Fuse.FuseResult<SearchPollType>[]): NewFuseType[] => {
+        const uniqueResults = Array.from(new Map(
+            results.map(result => [result.item.path, result.item])
+        ).values());
 
-    // 凑数据
-    const generateFuse = (fuse) => {
-        // 去重
-        const fFuse: SearchPollType[] = filterFuse(fuse)
-        const newFuse: NewFuseType[] = []
-        fFuse.forEach((i) => {
-            const res: NewFuseType = {
-                label: i.title.join('>'),
-                value: i.path
-            }
-            newFuse.push(res)
-        })
-        return newFuse
-    }
+        return Array.from(uniqueResults).map(item => ({
+            label: item.title.join(' > '),
+            value: item.path
+        }));
+    }, []);
 
     // search 相关
     // 搜索方法
     const [searchOptions, setSearchOptions] = useState<SelectProps['options']>([])
-    const handleSearch = (query: string) => {
-        if (query !== '') {
-            const fuseData = fuse.search(query)
-            const newFusedata: NewFuseType[] = generateFuse(fuseData)
-            setSearchOptions(newFusedata)
-        } else {
-            setSearchOptions([])
+    const handleSearch = useCallback((query: string) => {
+        if (!query.trim()) {
+            setSearchOptions([]);
+            return;
         }
-    }
+
+        const results = fuseInstance.search(query);
+        const options = generateSearchOptions(results);
+        setSearchOptions(options);
+    }, [fuseInstance, generateSearchOptions]);
 
     // 选中回调
-    const handleChange = (value: string) => {
-        navigate(value)
-    }
+    // 导航处理
+    const handleSelect = useCallback((path: string) => {
+        navigate(path);
+        setSearchValue(undefined);  // 清空选中值
+        setIsVisible(false);        // 关闭下拉框
+    }, [navigate]);
+
+    // 切换搜索框可见状态
+    const toggleSearch = useCallback(() => {
+        setIsVisible(prev => !prev);
+    }, []);
 
     return (
         <div className={styles['header-search']} id="guide-search">
-            <span onClick={onShowClick}>
+            <button
+                type="button"
+                onClick={toggleSearch}
+                aria-label="Toggle search"
+                className={styles.toggleButton}>
                 <SearchOutlined />
-            </span>
+            </button>
             <Select
-                className={`${isShow ? styles['show'] : styles['hide']}`}
+                className={styles[isVisible ? 'show' : 'hide']}
                 style={{ width: 200 }}
                 showSearch
-                value={value}
+                value={searchValue}
+                placeholder="Search..."
                 defaultActiveFirstOption={false}
                 suffixIcon={null}
                 filterOption={false}
                 onSearch={handleSearch}
-                onChange={handleChange}
+                onChange={handleSelect}
                 notFoundContent={null}
-                options={(searchOptions || []).map((d) => ({
-                    value: d.value,
-                    label: d.label
-                }))}
+                options={searchOptions}
+                onBlur={() => setIsVisible(false)}
+                autoFocus={isVisible}
             />
         </div>
     )

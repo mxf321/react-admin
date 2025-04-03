@@ -5,15 +5,23 @@ import type { TabsProps } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { getFeatureApi } from '@/api'
 import { GetFeatureItemResult } from '@/types/api'
+import { Loading } from '@/components'
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation()
   const [featureData, setFeatureData] = useState<GetFeatureItemResult[]>([])
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const getFeatureData = async () => {
-      const res: GetFeatureItemResult[] = (await getFeatureApi()).data
-      setFeatureData(res)
+      try {
+        const res: GetFeatureItemResult[] = (await getFeatureApi()).data
+        setFeatureData(res)
+      } catch (error) {
+        console.error('Failed to fetch features:', error);
+      } finally {
+        setLoading(false);
+      }
     }
     getFeatureData()
   }, [])
@@ -36,6 +44,9 @@ const ProfilePage: React.FC = () => {
     }
   ]
 
+  if (loading) {
+    return <Loading />
+  }
   return (
     <Row gutter={12}>
       <Col span={6}>

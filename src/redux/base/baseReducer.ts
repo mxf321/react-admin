@@ -15,7 +15,7 @@ import { TagsViewItemType, BreadcrumbItemsType } from '@/types/app'
 export interface BaseState {
   language: 'zh' | 'en'
   collapsed: boolean
-  tagsViewList: TagsViewItemType[]
+  tagsViewList: []
   breadcrumbItems: BreadcrumbItemsType[]
 }
 

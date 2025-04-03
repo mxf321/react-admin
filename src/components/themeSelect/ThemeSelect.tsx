@@ -1,7 +1,7 @@
 import { Dropdown, MenuProps, Space, Typography } from 'antd'
 import { useDispatch } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Modal } from 'antd'
 import { setMainColorCreator } from '@/redux/theme/themeActions'
 import { generate, green, presetPalettes, red } from '@ant-design/colors'
@@ -10,60 +10,60 @@ import { SvgIcon } from '@/components'
 import { AppDispatch } from '@/redux'
 import type { ColorPickerProps, GetProp } from 'antd'
 
-type Color = GetProp<ColorPickerProps, 'value'>
-type Presets = Required<ColorPickerProps>['presets'][number]
-const genPresets = (presets = presetPalettes) =>
-    Object.entries(presets).map<Presets>(([label, colors]) => ({ label, colors }))
+type Color = GetProp<ColorPickerProps, 'value'>;
+type ColorPreset = Required<ColorPickerProps>['presets'][number];
 
+const generatePresets = (primaryColor: string): ColorPreset[] => {
+    return [
+        { label: 'Primary', colors: generate(primaryColor) },
+        { label: 'Red', colors: red },
+        { label: 'Green', colors: green }
+    ];
+};
+const DEFAULT_COLOR = '#1677ff';
 export const ThemeSelect: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>()
     const { t } = useTranslation()
-    const items: MenuProps['items'] = [
-        {
-            key: 'them',
-            label: t('navBar.themeChange')
-        }
-    ]
-
-    const [confirmLoading, setConfirmLoading] = useState(false)
     const { token } = theme.useToken()
+    // Memoized values
+    const menuItems: MenuProps['items'] = useMemo(() => [{
+        key: 'theme',
+        label: t('navBar.themeChange')
+    }], [t]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedColor, setSelectedColor] = useState<Color>(DEFAULT_COLOR);
 
-    const presets = genPresets({
-        primary: generate(token.colorPrimary),
-        red,
-        green
-    })
-    const [value, setValue] = useState<Color>('#1677ff')
+    const colorPresets = useMemo(
+        () => generatePresets(token.colorPrimary),
+        [token.colorPrimary]
+    );
+    // Event handlers
+    const showColorPicker = useCallback(() => setIsModalOpen(true), []);
+    const closeColorPicker = useCallback(() => setIsModalOpen(false), []);
+    const handleConfirm = useCallback(() => {
+        const colorValue = typeof selectedColor === 'string'
+            ? selectedColor
+            : selectedColor.toHexString();
 
-    const onClick: MenuProps['onClick'] = () => {
-        setIsModalOpen(true)
-    }
+        dispatch(setMainColorCreator(colorValue));
+        closeColorPicker();
+    }, [selectedColor, dispatch, closeColorPicker]);
 
-    const [isModalOpen, setIsModalOpen] = useState(false)
+    const handleColorChange = useCallback<ColorPickerProps['onChange']>(
+        (color) => setSelectedColor(color),
+        []
+    );
 
-    const handleOk = () => {
-        const newColor = typeof value === 'string' ? value : value!.toHexString()
-        dispatch(setMainColorCreator(newColor))
-        setIsModalOpen(false)
-    }
-
-    const handleCancel = () => {
-        setIsModalOpen(false)
-    }
-
-    const onChangeCompleteClick = (color: Color) => {
-        setValue(color)
-    }
 
     return (
         <div id="guide-theme">
             <Dropdown
                 menu={{
-                    items,
-                    onClick
+                    items: menuItems,
+                    onClick: showColorPicker
                 }}
             >
-                <Typography.Link>
+                <Typography.Link aria-label={t('navBar.themeChange')}>
                     <Space>
                         <SvgIcon icon={'change-theme'} />
                     </Space>
@@ -72,20 +72,21 @@ export const ThemeSelect: React.FC = () => {
             <Modal
                 title={t('theme.themeChange')}
                 open={isModalOpen}
-                onOk={handleOk}
-                onCancel={handleCancel}
-                confirmLoading={confirmLoading}
+                onOk={handleConfirm}
+                onCancel={closeColorPicker}
                 okText={t('universal.confirm')}
                 cancelText={t('universal.cancel')}
+                centered
+                destroyOnClose
             >
                 <div>{t('theme.themeColorChange')}</div>
                 <ColorPicker
-                    presets={presets}
-                    value={value}
-                    onChange={setValue}
-                    onChangeComplete={(color) => {
-                        onChangeCompleteClick(color)
-                    }}
+                    presets={colorPresets}
+                    value={selectedColor}
+                    onChange={handleColorChange}
+                    showText
+                    size="middle"
+                    format="hex"
                 />
             </Modal>
         </div>

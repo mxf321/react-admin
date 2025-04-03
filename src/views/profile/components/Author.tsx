@@ -17,7 +17,7 @@ export const Author: React.FC = () => {
           {t('profile.name')}
         </PanThumb>
       ) : (
-        <div>暂时数据</div>
+        <div>暂无数据</div>
       )}
       <div>
         <h3>{t('profile.name')}</h3>

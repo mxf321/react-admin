@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux'
 import { setLanguageCreator } from '@/redux/base/baseActions'
 import { SvgIcon } from '@/components'
 import { AppDispatch } from '@/redux'
+import { useCallback } from 'react'
 
 export const LangSelect: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>()
@@ -17,16 +18,16 @@ export const LangSelect: React.FC = () => {
         }
     ]
 
-    const onClick: MenuProps['onClick'] = (e) => {
+    const handleLanguageChange: MenuProps['onClick'] = useCallback((e) => {
         dispatch(setLanguageCreator(e.key))
-    }
+    }, [dispatch])
 
     return (
         <div id="guide-lang">
             <Dropdown
                 menu={{
                     items,
-                    onClick
+                    onClick: handleLanguageChange,
                 }}
             >
                 <Typography.Link>

@@ -55,9 +55,13 @@ const PermissionListPage: React.FC = () => {
     }
     // 获取数据的方法
     const getListData = async () => {
-        const res: GetPermissionListResult[] = (await getPermissionListApi()).data
-        const resTable: DataType[] = getTable(res)
-        setTableData(resTable)
+        try {
+            const res: GetPermissionListResult[] = (await getPermissionListApi()).data
+            const resTable: DataType[] = getTable(res)
+            setTableData(resTable)
+        } catch (error) {
+            console.error('Failed to fetch permission list:', error);
+        }
     }
     useEffect(() => {
         getListData()

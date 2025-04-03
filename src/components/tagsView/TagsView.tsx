@@ -8,10 +8,11 @@ import {
     removeTagsViewCreator
 } from '@/redux/base/baseActions'
 import { Dropdown, MenuProps } from 'antd'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AppDispatch, RootState } from '@/redux'
 import type { TagsViewItemType } from '@/types/app'
 
+type MenuAction = 'refresh' | 'closeRight' | 'closeOther';
 export const TagsView: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>()
     const navigate = useNavigate()
@@ -19,96 +20,82 @@ export const TagsView: React.FC = () => {
     const location = useLocation()
     const tagsViewList = useSelector((state: RootState) => state.base.tagsViewList)
     const mainColor = useSelector((state: RootState) => state.theme.mainColor)
-    // tagsIndex 操作 右键菜单
-    const [tagsIndex, setTagsIndex] = useState<number>(0)
-    const [tagItem, setTagItem] = useState<TagsViewItemType>()
-    // 是否被选中
-    const isActive: (tag: TagsViewItemType) => boolean = (tag: TagsViewItemType) => {
-        return tag.fullPath === location.pathname
-    }
 
-    const items: MenuProps['items'] = [
-        {
-            label: t('tagsView.refresh'),
-            key: 'refresh'
-        },
-        {
-            label: t('tagsView.closeRight'),
-            key: 'closeRight'
-        },
-        {
-            label: t('tagsView.closeOther'),
-            key: 'closeOther'
-        }
-    ]
-    const handleMenuClick: MenuProps['onClick'] = (e) => {
-        switch (e.key) {
+    // 右键菜单状态
+    const [contextMenuState, setContextMenuState] = useState<{
+        index: number;
+        tag: TagsViewItemType;
+    }>({ index: 0, tag: undefined! });
+
+    // 生成菜单项
+    const contextMenuItems = useMemo<MenuProps['items']>(() => [
+        { label: t('tagsView.refresh'), key: 'refresh' },
+        { label: t('tagsView.closeRight'), key: 'closeRight' },
+        { label: t('tagsView.closeOther'), key: 'closeOther' }
+    ], [t]);
+
+    // 判断当前激活状态
+    const isActive = useCallback((path: string) =>
+        path === location.pathname,
+        [location.pathname]);
+
+    // 处理菜单操作
+    const handleContextMenuAction = useCallback(async (action: MenuAction) => {
+        const { index, tag } = contextMenuState;
+
+        switch (action) {
             case 'refresh':
-                onRefreshClick()
-                break
+                navigate(0);
+                break;
+
             case 'closeRight':
-                onCloseRightClick()
-                break
+                dispatch(removeTagsViewCreator('right', index))
+                if (tagsViewList.slice(index + 1).some(t => isActive(t.fullPath))) {
+                    navigate(tagsViewList[0].fullPath);
+                }
+                break;
+
             case 'closeOther':
-                onCloseOtherClick()
-                break
-            default:
-                break
+                dispatch(removeTagsViewCreator('right', index))
+                navigate(tag.fullPath);
+                break;
         }
-    }
+    }, [contextMenuState, dispatch, navigate, tagsViewList, isActive]);
 
-    const onRefreshClick = () => {
-        navigate(0)
-    }
-
-    const onCloseRightClick = () => {
-        dispatch(removeTagsViewCreator('right', tagsIndex))
-        // 删除的右侧数据有 isActive
-        const rightTagsViewList: TagsViewItemType[] = tagsViewList.filter((i: TagsViewItemType, index: number) => index > tagsIndex)
-        const curTag: TagsViewItemType | undefined = rightTagsViewList.find((i: TagsViewItemType) => location.pathname.includes(i.fullPath))
-        if (curTag) {
-            navigate(tagsViewList[0].fullPath)
+    // 关闭单个标签
+    const handleCloseTag = useCallback((index: number, e: React.MouseEvent) => {
+        e.preventDefault();
+        dispatch(removeTagsViewCreator('index', index))
+        if (isActive(tagsViewList[index].fullPath)) {
+            const prevTag = tagsViewList[index - 1] || tagsViewList[index + 1];
+            prevTag && navigate(prevTag.fullPath);
         }
-    }
-    const onCloseOtherClick = () => {
-        const path: string = tagsViewList[tagsIndex].fullPath
-        dispatch(removeTagsViewCreator('other', tagsIndex))
-        navigate(path)
-    }
-    const onOpenChange = (index: number, tag: TagsViewItemType) => {
-        setTagsIndex(index)
-        setTagItem(tag)
-    }
-    // 关闭
-    const onCloseClick = (i, e) => {
-        // e.preventDefault 阻止 link
-        e.preventDefault()
-        dispatch(removeTagsViewCreator('index', i))
-    }
+    }, [dispatch, navigate, tagsViewList, isActive]);
 
     return (
         <div id="guide-tag" className={styles['tags-view-container']}>
             {tagsViewList.map((tag, index) => (
                 <Dropdown
-                    menu={{ items, onClick: handleMenuClick }}
-                    trigger={['contextMenu']}
-                    key={`con-${index}`}
-                    onOpenChange={() => {
-                        onOpenChange(index, tag)
+                    menu={{
+                        items: contextMenuItems,
+                        onClick: ({ key }) => handleContextMenuAction(key as MenuAction)
                     }}
+                    trigger={['contextMenu']}
+                    key={`tag-${tag.fullPath}`}
+                    onOpenChange={() => setContextMenuState({ index, tag })}
                 >
                     <Link
-                        className={`${styles['tags-view-item']} ${isActive(tag) ? styles['active'] : ''
+                        className={`${styles['tags-view-item']} ${isActive(tag.fullPath) ? styles['active'] : ''
                             } `}
                         style={{
-                            backgroundColor: isActive(tag) ? mainColor : ''
+                            backgroundColor: isActive(tag.fullPath) ? mainColor : ''
                         }}
                         to={tag.fullPath}
                         key={tag.fullPath}
                     >
                         {t('route.' + tag.title)}
-                        {!isActive(tag) && (
-                            <CloseOutlined onClick={(e) => onCloseClick(index, e)} />
+                        {!isActive(tag.fullPath) && (
+                            <CloseOutlined onClick={(e) => handleCloseTag(index, e)} />
                         )}
                     </Link>
                 </Dropdown>

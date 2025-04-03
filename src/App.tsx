@@ -9,17 +9,24 @@ import { useDispatch } from 'react-redux'
 import { getUserInfo } from './redux/user/slice'
 import { setRoutesActionCreator } from './redux/permission/permissionActions'
 import { AppDispatch } from './redux'
-
+// 定义路由配置表类型
+type IRouteConfigsTable = typeof publicRoutes[number];
 function App() {
     const dispatch = useDispatch<AppDispatch>()
     const [router, setRouter] = useState<IRouteConfigsTable[]>([])
+    const mainColor = useSelector((state) => state.theme.mainColor)
+
+    // 初始化路由
     const initRoutes = async () => {
-        const { permissions } = (await dispatch(getUserInfo())).payload
-        const permissionsMenus: string[] = permissions['menus']
-        const newRoutes: IRouteConfigsTable[] = filterRoutes(permissionsMenus)
-        setRouter(newRoutes)
-        return newRoutes
-    }
+        try {
+            const { payload } = await dispatch(getUserInfo());
+            const permissionsMenus: string[] = payload.permissions.menus;
+            const filteredRoutes = filterRoutes(permissionsMenus);
+            setRouter(filteredRoutes);
+        } catch (error) {
+            console.error('Failed to initialize routes:', error);
+        }
+    };
 
     // 根据权限数据筛选路由
     const filterRoutes = (menus: string[]) => {
@@ -36,11 +43,11 @@ function App() {
         initRoutes()
     }, [])
 
+    // 创建路由实例
     const nrouter =
         router && router.length
             ? createBrowserRouter(router)
             : createBrowserRouter(publicRoutes)
-    const mainColor = useSelector((state) => state.theme.mainColor)
 
     return (
         <>
